@@ -13,6 +13,53 @@ Examples:
 import numpy as np
 import sounddevice as sd
 import sys
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+import threading
+
+
+def visualize_waveform(wave, sample_rate, duration, title="Waveform"):
+    """
+    Display a real-time visualization of the waveform.
+
+    Args:
+        wave: The audio waveform data
+        sample_rate: Sample rate in Hz
+        duration: Duration in seconds
+        title: Title for the plot
+    """
+    # Create time array for x-axis
+    t = np.linspace(0, duration, len(wave), endpoint=False)
+
+    # Set up the plot
+    plt.ion()  # Turn on interactive mode
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+
+    # Plot 1: Full waveform
+    ax1.plot(t, wave, color='blue', linewidth=0.5)
+    ax1.set_xlabel('Time (s)')
+    ax1.set_ylabel('Amplitude')
+    ax1.set_title(f'{title} - Full Waveform')
+    ax1.grid(True, alpha=0.3)
+    ax1.set_xlim(0, duration)
+
+    # Plot 2: Zoomed view (first 0.05 seconds to see individual waves)
+    zoom_duration = min(0.05, duration)
+    zoom_samples = int(sample_rate * zoom_duration)
+    t_zoom = t[:zoom_samples]
+    wave_zoom = wave[:zoom_samples]
+
+    ax2.plot(t_zoom, wave_zoom, color='red', linewidth=1.5, marker='o', markersize=3)
+    ax2.set_xlabel('Time (s)')
+    ax2.set_ylabel('Amplitude')
+    ax2.set_title(f'{title} - Zoomed View (First {zoom_duration}s)')
+    ax2.grid(True, alpha=0.3)
+    ax2.set_xlim(0, zoom_duration)
+
+    plt.tight_layout()
+    plt.show(block=False)
+    plt.pause(duration)  # Keep the plot open for the duration of the sound
+    plt.close()
 
 
 def play_frequency(frequency=440, duration=2.0, sample_rate=44100, amplitude=0.3):
@@ -34,8 +81,20 @@ def play_frequency(frequency=440, duration=2.0, sample_rate=44100, amplitude=0.3
 
     # Play the sound
     print(f"Playing {frequency} Hz for {duration} seconds...")
+
+    # Start visualization in a separate thread
+    viz_thread = threading.Thread(
+        target=visualize_waveform,
+        args=(wave, sample_rate, duration, f"Frequency: {frequency} Hz")
+    )
+    viz_thread.start()
+
+    # Play the sound
     sd.play(wave, sample_rate)
     sd.wait()  # Wait until sound finishes playing
+
+    # Wait for visualization to finish
+    viz_thread.join()
     print("Done!")
 
 
@@ -71,8 +130,20 @@ def play_multiple_frequencies(frequencies, duration=2.0, sample_rate=44100, ampl
     freq_str = ", ".join([f"{f} Hz" for f in frequencies])
     print(f"Playing {len(frequencies)} frequencies simultaneously: {freq_str}")
     print(f"Duration: {duration} seconds")
+
+    # Start visualization in a separate thread
+    viz_thread = threading.Thread(
+        target=visualize_waveform,
+        args=(wave, sample_rate, duration, f"Mixed Frequencies: {freq_str}")
+    )
+    viz_thread.start()
+
+    # Play the sound
     sd.play(wave, sample_rate)
     sd.wait()  # Wait until sound finishes playing
+
+    # Wait for visualization to finish
+    viz_thread.join()
     print("Done!")
 
 
